@@ -1,0 +1,231 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kestrel | Warranty Claim Review</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+            color: #172033;
+        }
+        header {
+            background: #172554;
+            color: white;
+            padding: 22px 7%;
+        }
+        header h1 { margin: 0 0 7px; font-size: 24px; }
+        header p { margin: 0; color: #dbeafe; }
+        main {
+            max-width: 950px;
+            margin: 28px auto;
+            padding: 0 18px;
+        }
+        .panel {
+            background: white;
+            border: 1px solid #e1e6ef;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        h2 { margin-top: 0; font-size: 19px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 7px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font: inherit;
+        }
+        textarea { min-height: 90px; resize: vertical; }
+        .full { grid-column: 1 / -1; }
+        button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #1d4ed8;
+            color: white;
+            border: 0;
+            border-radius: 7px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:disabled { opacity: .6; cursor: wait; }
+        #result { display: none; }
+        .score { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .notice {
+            background: #eff6ff;
+            padding: 12px;
+            border-radius: 7px;
+            line-height: 1.5;
+        }
+        #message { margin-top: 14px; white-space: pre-wrap; }
+        li { margin: 9px 0; }
+        footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+            .full { grid-column: auto; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Kestrel Warranty Claim Review</h1>
+    <p>AI-assisted risk scoring for human investigation</p>
+</header>
+
+<main>
+    <section class="panel">
+        <h2>Claim details</h2>
+        <form id="claimForm">
+            <div class="grid">
+                <div>
+                    <label for="claim_id">Claim ID</label>
+                    <input id="claim_id" value="DEMO001" required>
+                </div>
+                <div>
+                    <label for="submitted_at">Submission date and time</label>
+                    <input id="submitted_at" type="datetime-local"
+                           value="2026-09-15T10:30" required>
+                </div>
+                <div>
+                    <label for="partner_id">Partner ID</label>
+                    <input id="partner_id" value="P1001" required>
+                </div>
+                <div>
+                    <label for="sku">Product SKU</label>
+                    <input id="sku" value="SKU001" required>
+                </div>
+                <div>
+                    <label for="days_since_purchase">Days since purchase</label>
+                    <input id="days_since_purchase" type="number" min="0" value="20" required>
+                </div>
+                <div>
+                    <label for="claim_amount_inr">Claim amount (₹)</label>
+                    <input id="claim_amount_inr" type="number" min="0.01" step="0.01" value="4500" required>
+                </div>
+                <div>
+                    <label for="photo_attached">Photo attached?</label>
+                    <select id="photo_attached">
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="partner_inspected">Partner inspection completed?</label>
+                    <select id="partner_inspected">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="customer_prior_claims">Previous customer claims</label>
+                    <input id="customer_prior_claims" type="number" min="0" value="1" required>
+                </div>
+                <div>
+                    <label for="source">Claim source</label>
+                    <select id="source">
+                        <option value="crm">CRM</option>
+                        <option value="legacy_zoho">Legacy Zoho</option>
+                    </select>
+                </div>
+                <div class="full">
+                    <label for="claim_description">Claim description</label>
+                    <textarea id="claim_description" required>Product stopped working shortly after purchase</textarea>
+                </div>
+            </div>
+            <button id="submitButton" type="submit">Analyze claim</button>
+            <div id="message" role="status"></div>
+        </form>
+    </section>
+
+    <section class="panel" id="result" aria-live="polite">
+        <h2>Assessment result</h2>
+        <div>Model risk score</div>
+        <div class="score" id="score">—</div>
+        <p class="notice">This score is a prioritization signal, not proof of fraud.
+        A trained reviewer must check the claim and supporting evidence.</p>
+        <h3>Review indicators</h3>
+        <ul id="reasons"></ul>
+        <p><strong>Recommended action:</strong> <span id="decision"></span></p>
+    </section>
+</main>
+
+<footer>Internal assessment prototype · Human review required</footer>
+
+<script>
+const form = document.getElementById("claimForm");
+const message = document.getElementById("message");
+const button = document.getElementById("submitButton");
+const result = document.getElementById("result");
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    message.textContent = "Analyzing claim...";
+    result.style.display = "none";
+
+    const value = id => document.getElementById(id).value;
+
+    const payload = {
+        claim_id: value("claim_id"),
+        submitted_at: value("submitted_at").replace("T", " "),
+        partner_id: value("partner_id"),
+        sku: value("sku"),
+        days_since_purchase: Number(value("days_since_purchase")),
+        claim_amount_inr: Number(value("claim_amount_inr")),
+        photo_attached: value("photo_attached"),
+        partner_inspected: value("partner_inspected"),
+        claim_description: value("claim_description"),
+        customer_prior_claims: Number(value("customer_prior_claims")),
+        source: value("source")
+    };
+
+    try {
+        const response = await fetch("/score", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(JSON.stringify(data.detail || data));
+        }
+
+        document.getElementById("score").textContent =
+            Number(data.risk_score).toFixed(4);
+        document.getElementById("decision").textContent = data.decision;
+
+        const list = document.getElementById("reasons");
+        list.replaceChildren();
+        data.reasons.forEach(reason => {
+            const item = document.createElement("li");
+            item.textContent = reason;
+            list.appendChild(item);
+        });
+
+        result.style.display = "block";
+        message.textContent = "Analysis completed.";
+    } catch (error) {
+        message.textContent = "Could not analyze claim: " + error.message;
+    } finally {
+        button.disabled = false;
+    }
+});
+</script>
+</body>
+</html>
